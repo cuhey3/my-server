@@ -3,6 +3,7 @@ mod handlers;
 mod matcher;
 mod routes;
 
+use std::env;
 use crate::app_state::AppState;
 use crate::routes::Routes;
 use axum::Router;
@@ -28,7 +29,19 @@ async fn main() {
 
     let app = Routes::add_routes(Router::new(), shared_state);
 
-    let result = tokio::net::TcpListener::bind("127.0.0.1:3000").await;
+    let mut port: u16 = 8080;
+    match env::var("PORT") {
+        Ok(p) => {
+            match p.parse::<u16>() {
+                Ok(n) => {
+                    port = n;
+                }
+                Err(_e) => {}
+            };
+        }
+        Err(_e) => {}
+    };
+    let result = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await;
 
     let Ok(listener) = result else {
         event!(Level::ERROR, "listening failed: {:?}", result.err());
