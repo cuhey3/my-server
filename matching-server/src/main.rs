@@ -3,10 +3,10 @@ mod handlers;
 mod matcher;
 mod routes;
 
-use std::env;
 use crate::app_state::AppState;
 use crate::routes::Routes;
 use axum::Router;
+use std::env;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{Level, event};

@@ -20,6 +20,10 @@ impl AppState {
             && !self.matcher_to_wrappers.get(matcher).unwrap().is_empty()
     }
 
+    pub fn clear_matcher_to_wrappers(&mut self) {
+        self.matcher_to_wrappers.clear();
+    }
+
     pub fn get_waiting_user_id(&self, matcher: &Matcher) -> Option<UserId> {
         if !self.has_waiting(matcher) {
             return None;

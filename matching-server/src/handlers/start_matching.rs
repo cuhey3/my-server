@@ -19,8 +19,9 @@ pub async fn start_matching_handler(
 ) -> Result<(StatusCode, Json<StartMatchingResponse>), (StatusCode, String)> {
     let user_id_response_type = match payload.user_id_request_type {
         UserIdRequestType::Creating => {
-            let created_user_id =
-                getrandom::u32().map_err(|err| to_http_error(err, "creating user id failed"))? as u64;
+            let created_user_id = getrandom::u32()
+                .map_err(|err| to_http_error(err, "creating user id failed"))?
+                as u64;
             UserIdResponseType::Created(created_user_id)
         }
         // TODO
@@ -36,6 +37,14 @@ pub async fn start_matching_handler(
         return Err((
             StatusCode::BAD_REQUEST,
             "signaling request type is incorrect".to_owned(),
+        ));
+    };
+
+    if matches!(user_id_response_type, UserIdResponseType::Keep) {
+        state.lock().await.clear_matcher_to_wrappers();
+        return Err(to_http_error(
+            "matcher to wrappers cleared",
+            "temporary logic",
         ));
     };
 
