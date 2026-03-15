@@ -20,7 +20,7 @@ pub async fn start_matching_handler(
     let user_id_response_type = match payload.user_id_request_type {
         UserIdRequestType::Creating => {
             let created_user_id =
-                getrandom::u64().map_err(|err| to_http_error(err, "creating user id failed"))?;
+                getrandom::u32().map_err(|err| to_http_error(err, "creating user id failed"))? as u64;
             UserIdResponseType::Created(created_user_id)
         }
         // TODO
