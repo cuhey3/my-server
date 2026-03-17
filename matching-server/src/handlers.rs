@@ -2,8 +2,8 @@ use axum::http::StatusCode;
 use std::fmt::Display;
 
 pub mod send_sdp;
-pub mod signaling_answer;
 pub mod start_matching;
+pub mod web_rtc;
 
 pub fn to_http_error<T: Display>(err: T, message: &str) -> (StatusCode, String) {
     (

@@ -5,12 +5,11 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use matching_if::structs::via_http::common::{
-    SignalingResponseType, UserIdRequestType, UserIdResponseType,
+    SignalingRequestType, SignalingResponseType, UserIdRequestType, UserIdResponseType,
 };
 use matching_if::structs::via_http::start_matching::{
     StartMatchingRequest, StartMatchingResponse, StartMatchingResponseType,
 };
-use matching_if::types::UserId;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -31,6 +30,24 @@ pub async fn start_matching_handler(
         UserIdRequestType::Keep(_) => UserIdResponseType::Keep,
     };
 
+    if !matches!(
+        payload.signaling_request_type,
+        SignalingRequestType::OfferAccepting
+    ) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "signaling request type is incorrect".to_owned(),
+        ));
+    };
+
+    if matches!(user_id_response_type, UserIdResponseType::Keep) {
+        state.lock().await.clear_matcher_to_wrappers();
+        return Err(to_http_error(
+            "matcher to wrappers cleared",
+            "temporary logic",
+        ));
+    };
+
     let own_user_id = payload
         .user_id_request_type
         .get_current_user_id(&user_id_response_type)
@@ -38,14 +55,18 @@ pub async fn start_matching_handler(
 
     let matcher = Matcher::new_from_start_matching_request(&payload);
 
-    if !state.lock().await.has_waiting_user(&matcher) {
+    if !state
+        .lock()
+        .await
+        .has_waiting_peer_connection_wrapper(&matcher)
+    {
         return waiting_logic(state, user_id_response_type, own_user_id, &matcher).await;
     }
 
-    let (user_id, _) = state
+    let user_id = state
         .lock()
         .await
-        .get_waiting_user_id(&matcher)
+        .get_waiting_user_id_from_wrappers(&matcher)
         .ok_or_else(|| {
             none_to_http_error(
                 format!("matcher has waiting but no user id, matcher {:?}", matcher).as_str(),
@@ -64,24 +85,31 @@ pub async fn start_matching_handler(
 async fn waiting_logic(
     state: State<Arc<Mutex<AppState>>>,
     user_id_response_type: UserIdResponseType,
-    user_id: UserId,
+    user_id: u64,
     matcher: &Matcher,
 ) -> Result<(StatusCode, Json<StartMatchingResponse>), (StatusCode, String)> {
-    let (sender, mut receiver) = tokio::sync::mpsc::channel::<(UserId, String)>(1);
+    let mut peer_connection_wrapper = state
+        .lock()
+        .await
+        .get_web_rtc_wrapper()
+        .create_connection_wrapper(user_id)
+        .await
+        .map_err(|err| to_http_error(err, "creating connection wrapper failed"))?;
+
+    let offer = peer_connection_wrapper
+        .create_offer()
+        .await
+        .map_err(|err| to_http_error(err, "creating offer failed"))?;
+
     state
         .lock()
         .await
-        .insert_waiting_user(matcher, &user_id, sender);
-
-    let (opponent_user_id, offer) = receiver
-        .recv()
-        .await
-        .ok_or_else(|| none_to_http_error("offer is none"))?;
+        .insert_wrapper(matcher, peer_connection_wrapper);
 
     let response = StartMatchingResponse {
         user_id_response_type,
         signaling_response_type: SignalingResponseType::Offering(offer),
-        response_type: StartMatchingResponseType::Matched(opponent_user_id),
+        response_type: StartMatchingResponseType::Waiting,
     };
 
     Ok((StatusCode::OK, Json(response)))

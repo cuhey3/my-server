@@ -26,7 +26,6 @@ async fn main() {
         .init();
 
     let shared_state = SharedState::default();
-
     let app = Routes::add_routes(Router::new(), shared_state);
 
     let mut port: u16 = 8080;

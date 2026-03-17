@@ -1,7 +1,9 @@
 use crate::SharedState;
 use crate::handlers::send_sdp::send_sdp_handler;
-use crate::handlers::signaling_answer::signaling_answer_handler;
 use crate::handlers::start_matching::start_matching_handler;
+use crate::handlers::web_rtc::send_sdp::send_sdp_handler as web_rtc_send_sdp_handler;
+use crate::handlers::web_rtc::signaling_answer::signaling_answer_handler;
+use crate::handlers::web_rtc::start_matching::start_matching_handler as web_rtc_start_matching_handler;
 use axum::handler::Handler;
 use axum::{Router, routing};
 use std::sync::Arc;
@@ -17,7 +19,13 @@ impl Routes {
                 routing::post_service(start_matching_handler.with_state(Arc::clone(&shared_state))),
             )
             .route(
-                "/signaling-answer",
+                "/web_rtc/start-matching",
+                routing::post_service(
+                    web_rtc_start_matching_handler.with_state(Arc::clone(&shared_state)),
+                ),
+            )
+            .route(
+                "/web_rtc/signaling-answer",
                 routing::post_service(
                     signaling_answer_handler.with_state(Arc::clone(&shared_state)),
                 ),
@@ -25,6 +33,12 @@ impl Routes {
             .route(
                 "/send-sdp",
                 routing::post_service(send_sdp_handler.with_state(Arc::clone(&shared_state))),
+            )
+            .route(
+                "/web_rtc/send-sdp",
+                routing::post_service(
+                    web_rtc_send_sdp_handler.with_state(Arc::clone(&shared_state)),
+                ),
             )
             .layer(CorsLayer::permissive())
     }
