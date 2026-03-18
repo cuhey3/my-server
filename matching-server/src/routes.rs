@@ -1,4 +1,5 @@
 use crate::SharedState;
+use crate::handlers::reset_waiting::reset_waiting_handler;
 use crate::handlers::send_sdp::send_sdp_handler;
 use crate::handlers::start_matching::start_matching_handler;
 use crate::handlers::web_rtc::send_sdp::send_sdp_handler as web_rtc_send_sdp_handler;
@@ -14,6 +15,10 @@ pub struct Routes {}
 impl Routes {
     pub fn add_routes(router: Router, shared_state: SharedState) -> Router {
         router
+            .route(
+                "/reset-waiting",
+                routing::get_service(reset_waiting_handler.with_state(Arc::clone(&shared_state))),
+            )
             .route(
                 "/start-matching",
                 routing::post_service(start_matching_handler.with_state(Arc::clone(&shared_state))),

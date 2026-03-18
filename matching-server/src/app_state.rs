@@ -30,6 +30,9 @@ impl AppState {
         self.matcher_to_wrappers.clear();
     }
 
+    pub fn clear_matcher_to_user_id(&mut self) {
+        self.matcher_to_user_id.clear();
+    }
     pub fn get_waiting_user_id_from_wrappers(&self, matcher: &Matcher) -> Option<UserId> {
         if !self.has_waiting_peer_connection_wrapper(matcher) {
             return None;
