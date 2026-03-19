@@ -1,22 +1,17 @@
 use crate::matcher::Matcher;
 use matching_if::types::UserId;
-use matching_if::webrtc::peer_connection_wrapper::PeerConnectionWrapper;
-use matching_if::webrtc::web_rtc_wrapper::WebRtcWrapper;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Sender;
+use webrtc_adapter::peer_connection_adapter_impl::PeerConnectionAdapterImpl;
+use webrtc_if::peer_connection_adapter::PeerConnectionAdapter;
 
 #[derive(Default)]
 pub struct AppState {
-    web_rtc_wrapper: WebRtcWrapper,
-    matcher_to_wrappers: HashMap<Matcher, Vec<PeerConnectionWrapper>>,
+    matcher_to_wrappers: HashMap<Matcher, Vec<PeerConnectionAdapterImpl>>,
     matcher_to_user_id: HashMap<Matcher, (UserId, Sender<(UserId, String)>)>,
 }
 
 impl AppState {
-    pub fn get_web_rtc_wrapper(&self) -> &WebRtcWrapper {
-        &self.web_rtc_wrapper
-    }
-
     pub fn has_waiting_peer_connection_wrapper(&self, matcher: &Matcher) -> bool {
         self.matcher_to_wrappers.contains_key(matcher)
             && !self.matcher_to_wrappers.get(matcher).unwrap().is_empty()
@@ -66,7 +61,7 @@ impl AppState {
             cloned
         }
     }
-    pub fn insert_wrapper(&mut self, matcher: &Matcher, wrapper: PeerConnectionWrapper) {
+    pub fn insert_wrapper(&mut self, matcher: &Matcher, wrapper: PeerConnectionAdapterImpl) {
         if self.matcher_to_wrappers.contains_key(matcher) {
             self.matcher_to_wrappers
                 .get_mut(matcher)
@@ -82,7 +77,7 @@ impl AppState {
         &mut self,
         matcher: &Matcher,
         user_id: &UserId,
-    ) -> Option<&mut PeerConnectionWrapper> {
+    ) -> Option<&mut PeerConnectionAdapterImpl> {
         let wrappers = self.matcher_to_wrappers.get_mut(matcher);
         if wrappers.is_none() || wrappers.as_ref().unwrap().is_empty() {
             return None;

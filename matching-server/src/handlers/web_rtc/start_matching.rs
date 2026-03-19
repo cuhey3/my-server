@@ -12,6 +12,8 @@ use matching_if::structs::via_http::start_matching::{
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use webrtc_adapter::peer_connection_adapter_impl::PeerConnectionAdapterImpl;
+use webrtc_if::peer_connection_adapter::PeerConnectionAdapter;
 
 pub async fn start_matching_handler(
     state: State<Arc<Mutex<AppState>>>,
@@ -88,11 +90,8 @@ async fn waiting_logic(
     user_id: u64,
     matcher: &Matcher,
 ) -> Result<(StatusCode, Json<StartMatchingResponse>), (StatusCode, String)> {
-    let mut peer_connection_wrapper = state
-        .lock()
-        .await
-        .get_web_rtc_wrapper()
-        .create_connection_wrapper(user_id)
+    let mut peer_connection_wrapper =
+        PeerConnectionAdapterImpl::create_connection_wrapper(user_id)
         .await
         .map_err(|err| to_http_error(err, "creating connection wrapper failed"))?;
 

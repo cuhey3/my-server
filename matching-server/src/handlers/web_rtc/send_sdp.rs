@@ -9,6 +9,7 @@ use matching_if::structs::via_http::send_sdp::{SendSdpRequest, SendSdpResponse};
 use matching_if::structs::via_webrtc::receive_sdp::{ReceiveSdpOutboundData, ReceiveSdpReturnData};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use webrtc_if::peer_connection_adapter::PeerConnectionAdapter;
 
 pub async fn send_sdp_handler(
     state: State<Arc<Mutex<AppState>>>,
