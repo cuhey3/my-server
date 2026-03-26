@@ -45,7 +45,8 @@ pub async fn start_matching_handler(
     let (user_id, _) = state
         .lock()
         .await
-        .get_waiting_user_id(&matcher)
+        // start_matching の waiting では当然、 opponent 不明のため指定なし
+        .get_waiting_user_id(&matcher, None)
         .ok_or_else(|| {
             none_to_http_error(
                 format!("matcher has waiting but no user id, matcher {:?}", matcher).as_str(),
@@ -71,7 +72,8 @@ async fn waiting_logic(
     state
         .lock()
         .await
-        .insert_waiting_user(matcher, &user_id, sender);
+        // start_matching の waiting では当然、 opponent 不明のため指定なし
+        .insert_waiting_user(matcher, &user_id, None, sender);
 
     let (opponent_user_id, offer) = receiver
         .recv()

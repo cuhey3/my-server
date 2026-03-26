@@ -26,9 +26,11 @@ async fn main() {
         .init();
 
     let shared_state = SharedState::default();
+
     let app = Routes::add_routes(Router::new(), shared_state);
 
     let mut port: u16 = 8080;
+
     match env::var("PORT") {
         Ok(p) => {
             match p.parse::<u16>() {
@@ -40,6 +42,7 @@ async fn main() {
         }
         Err(_e) => {}
     };
+
     let result = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await;
 
     let Ok(listener) = result else {

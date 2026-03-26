@@ -5,10 +5,12 @@ use tokio::sync::mpsc::Sender;
 use webrtc_adapter::peer_connection_adapter_impl::PeerConnectionAdapterImpl;
 use webrtc_if::peer_connection_adapter::PeerConnectionAdapter;
 
+type MatcherToUserIdMap = HashMap<(Matcher, Option<UserId>), (UserId, Sender<(UserId, String)>)>;
+
 #[derive(Default)]
 pub struct AppState {
     matcher_to_wrappers: HashMap<Matcher, Vec<PeerConnectionAdapterImpl>>,
-    matcher_to_user_id: HashMap<Matcher, (UserId, Sender<(UserId, String)>)>,
+    matcher_to_user_id: MatcherToUserIdMap,
 }
 
 impl AppState {
@@ -18,7 +20,8 @@ impl AppState {
     }
 
     pub fn has_waiting_user(&self, matcher: &Matcher) -> bool {
-        self.matcher_to_user_id.contains_key(matcher)
+        self.matcher_to_user_id
+            .contains_key(&(matcher.clone(), None))
     }
 
     pub fn clear_matcher_to_wrappers(&mut self) {
@@ -43,18 +46,23 @@ impl AppState {
     pub fn get_waiting_user_id(
         &self,
         matcher: &Matcher,
+        opponent_id: Option<UserId>,
     ) -> Option<(UserId, Sender<(UserId, String)>)> {
-        self.matcher_to_user_id.get(matcher).cloned()
+        self.matcher_to_user_id
+            .get(&(matcher.clone(), opponent_id))
+            .cloned()
     }
 
-    // TODO
-    // waiting_user の複数化検討
     pub fn find_waiting_user_by_id(
         &mut self,
         matcher: &Matcher,
         user_id: &UserId,
+        opponent_id: Option<UserId>,
     ) -> Option<(UserId, Sender<(UserId, String)>)> {
-        let cloned = self.matcher_to_user_id.remove(matcher);
+        let cloned = self
+            .matcher_to_user_id
+            .remove(&(matcher.clone(), opponent_id));
+
         if cloned.as_ref().is_some() && cloned.as_ref().unwrap().0 != *user_id {
             None
         } else {
@@ -79,9 +87,11 @@ impl AppState {
         user_id: &UserId,
     ) -> Option<&mut PeerConnectionAdapterImpl> {
         let wrappers = self.matcher_to_wrappers.get_mut(matcher);
+
         if wrappers.is_none() || wrappers.as_ref().unwrap().is_empty() {
             return None;
         }
+
         wrappers.into_iter().find_map(|wrappers| {
             wrappers
                 .iter_mut()
@@ -95,13 +105,17 @@ impl AppState {
         user_id: &UserId,
     ) -> Result<(), String> {
         let wrappers = self.matcher_to_wrappers.get_mut(matcher);
+
         let Some(wrappers) = wrappers else {
             return Err("matcher does not set".to_owned());
         };
+
         if wrappers.is_empty() {
             return Err("matcher has no wrappers".to_owned());
         }
+
         wrappers.retain(|wrapper| wrapper.get_user_id() != user_id);
+
         Ok(())
     }
 
@@ -109,9 +123,10 @@ impl AppState {
         &mut self,
         matcher: &Matcher,
         user_id: &UserId,
+        opponent_id: Option<UserId>,
         sender: Sender<(UserId, String)>,
     ) {
         self.matcher_to_user_id
-            .insert(matcher.clone(), (*user_id, sender));
+            .insert((matcher.clone(), opponent_id), (*user_id, sender));
     }
 }

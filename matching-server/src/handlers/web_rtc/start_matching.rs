@@ -90,8 +90,7 @@ async fn waiting_logic(
     user_id: u64,
     matcher: &Matcher,
 ) -> Result<(StatusCode, Json<StartMatchingResponse>), (StatusCode, String)> {
-    let mut peer_connection_wrapper =
-        PeerConnectionAdapterImpl::create_connection_wrapper(user_id)
+    let mut peer_connection_wrapper = PeerConnectionAdapterImpl::create_connection_wrapper(user_id)
         .await
         .map_err(|err| to_http_error(err, "creating connection wrapper failed"))?;
 

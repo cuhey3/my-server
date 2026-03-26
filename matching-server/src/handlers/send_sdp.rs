@@ -21,10 +21,18 @@ pub async fn send_sdp_handler(
 
     let opponent_id = &payload.opponent_id;
 
+    // offerer なら opponent_id がないものを検索する(待っている相手は opponent_id を知らないため)
+    // answerer なら opponent_id を指定して検索する
+    let opponent_id_for_search = if matches!(payload.sdp_type, SdpType::Offer(_)) {
+        None
+    } else {
+        Some(payload.opponent_id)
+    };
+
     let (_, sender) = state
         .lock()
         .await
-        .find_waiting_user_by_id(&matcher, opponent_id)
+        .find_waiting_user_by_id(&matcher, &payload.opponent_id, opponent_id_for_search)
         .ok_or_else(|| {
             none_to_http_error(
                 format!(
@@ -41,15 +49,20 @@ pub async fn send_sdp_handler(
                 .send((payload.user_id, offer))
                 .await
                 .map_err(|err| to_http_error(err, "send offer by sender failed"))?;
+
             let (sender, mut receiver) = tokio::sync::mpsc::channel(1);
+
             state
                 .lock()
                 .await
-                .insert_waiting_user(&matcher, user_id, sender);
+                // 自分が offerer なら、相手から自分の user_id を opponent_id として検索してほしいのでキーにセットする
+                .insert_waiting_user(&matcher, user_id, Some(*user_id), sender);
+
             let (opponent_user_id, answer) = receiver
                 .recv()
                 .await
                 .ok_or(none_to_http_error("receive answer by sender failed"))?;
+
             Ok((
                 StatusCode::OK,
                 Json(SendSdpResponse {
@@ -59,7 +72,6 @@ pub async fn send_sdp_handler(
                 }),
             ))
         }
-
         SdpType::Answer(answer) => {
             Ok(send_answer(&payload.user_id, opponent_id, answer, sender).await?)
         }
